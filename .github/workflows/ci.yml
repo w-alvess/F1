@@ -14,7 +14,8 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Na main não cancela, para não interromper um deploy da documentação
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -77,9 +78,22 @@ jobs:
           path: coverage.xml
           if-no-files-found: ignore
 
+  # Publica no GitHub Pages só em push na main e depois de lint e testes passarem
   docs:
-    name: Build da documentação
+    name: Deploy da documentação
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, test]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
 
@@ -96,6 +110,14 @@ jobs:
 
       - name: MkDocs build
         run: poetry run mkdocs build --strict
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - name: Deploy no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
 
   integration:
     name: Testes de integração

@@ -1,5 +1,6 @@
 site_name: F1 Dashboard
 site_description: Dashboard de voltas, pilotos e sessoes da F1 sobre a OpenF1 API
+site_url: https://w-alvess.github.io/F1/
 docs_dir: docs/docs
 
 theme:
