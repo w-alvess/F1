@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+    inputs:
+      integration:
+        description: "Rodar também os testes de integração (OpenF1 real)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  POETRY_VERSION: "2.5.1"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: poetry
+
+      - name: Instalar dependências
+        run: poetry install --with dev --no-interaction
+
+      - name: Ruff check
+        run: poetry run ruff check . --output-format=github
+
+      - name: Ruff format
+        run: poetry run ruff format . --check
+
+  test:
+    name: Testes unitários
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: poetry
+
+      - name: Instalar dependências
+        run: poetry install --with dev --no-interaction
+
+      # A cobertura mínima (50%) vem do addopts no pyproject.toml
+      - name: Pytest
+        run: poetry run pytest tests/unit/ --cov-report=xml
+
+      - name: Publicar relatório de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  docs:
+    name: Build da documentação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: poetry
+
+      - name: Instalar dependências
+        run: poetry install --only docs --no-root --no-interaction
+
+      - name: MkDocs build
+        run: poetry run mkdocs build --strict
+
+  integration:
+    name: Testes de integração
+    if: github.event_name == 'workflow_dispatch' && inputs.integration
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: poetry
+
+      - name: Instalar dependências
+        run: poetry install --with dev --no-interaction
+
+      - name: Pytest (integração)
+        run: poetry run pytest tests/integration/ -m integration --no-cov
