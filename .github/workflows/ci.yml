@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+    inputs:
+      integration:
+        description: "Rodar também os testes de integração (OpenF1 real)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Na main não cancela, para não interromper um deploy da documentação
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  # Só a versão minor: o patch exato do .python-version pode não existir no runner
+  PYTHON_VERSION: "3.12"
+  POETRY_VERSION: "2.5.1"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Instalar Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: poetry
+
+      - name: Instalar dependências
+        run: poetry install --with dev --no-interaction
+
+      - name: Ruff check
+        run: poetry run ruff check . --output-format=github
+
+      - name: Ruff format
+        run: poetry run ruff format . --check
+
+  test:
+    name: Testes unitários
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Instalar Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: poetry
+
+      - name: Instalar dependências
+        run: poetry install --with dev --no-interaction
+
+      # A cobertura mínima (50%) vem do addopts no pyproject.toml
+      - name: Pytest
+        run: poetry run pytest tests/unit/ --cov-report=xml
+
+      - name: Publicar relatório de cobertura
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  # Publica no GitHub Pages só em push na main e depois de lint e testes passarem
+  docs:
+    name: Deploy da documentação
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Instalar Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: poetry
+
+      - name: Instalar dependências
+        run: poetry install --only docs --no-root --no-interaction
+
+      - name: MkDocs build
+        run: poetry run mkdocs build --strict
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - name: Deploy no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+  integration:
+    name: Testes de integração
+    if: github.event_name == 'workflow_dispatch' && inputs.integration
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Instalar Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: poetry
+
+      - name: Instalar dependências
+        run: poetry install --with dev --no-interaction
+
+      - name: Pytest (integração)
+        run: poetry run pytest tests/integration/ -m integration --no-cov

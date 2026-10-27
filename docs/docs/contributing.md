@@ -25,6 +25,23 @@ poetry run ruff format . --check
 poetry run pytest tests/unit/
 ```
 
+## CI
+
+O workflow [`.github/workflows/ci.yml`](https://github.com/w-alvess/F1/blob/main/.github/workflows/ci.yml)
+roda em todo push e PR para `main` e `dev`, com os jobs:
+
+| Job | O que roda |
+|---|---|
+| Lint | `ruff check .` e `ruff format . --check` |
+| Testes unitários | `pytest tests/unit/` com cobertura mínima de 50% |
+| Deploy da documentação | `mkdocs build --strict` e publicação no GitHub Pages; só em push na `main`, depois de lint e testes passarem |
+
+A documentação publicada fica em <https://w-alvess.github.io/F1/>.
+
+Os testes de integração não rodam automaticamente. Para executá-los, dispare o
+workflow manualmente em **Actions → CI → Run workflow** marcando a opção
+`integration`.
+
 ## Descrição do PR
 
 ```markdown
