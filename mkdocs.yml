@@ -1,0 +1,40 @@
+site_name: F1 Dashboard
+site_description: Dashboard de voltas, pilotos e sessoes da F1 sobre a OpenF1 API
+docs_dir: docs/docs
+
+theme:
+  name: material
+  language: pt
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Modo escuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Modo claro
+
+nav:
+  - Início: index.md
+  - Arquitetura: architecture.md
+  - Estrutura do Projeto: project-structure.md
+  - Como Rodar Local: running-locally.md
+  - Como Rodar Testes: running-tests.md
+  - Como Contribuir: contributing.md
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - admonition
+  - tables
