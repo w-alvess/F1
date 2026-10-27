@@ -20,6 +20,8 @@ permissions:
   contents: read
 
 env:
+  # Só a versão minor: o patch exato do .python-version pode não existir no runner
+  PYTHON_VERSION: "3.12"
   POETRY_VERSION: "2.5.1"
 
 jobs:
@@ -27,14 +29,14 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Instalar Poetry
         run: pipx install poetry==${{ env.POETRY_VERSION }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version-file: .python-version
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: poetry
 
       - name: Instalar dependências
@@ -50,14 +52,14 @@ jobs:
     name: Testes unitários
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Instalar Poetry
         run: pipx install poetry==${{ env.POETRY_VERSION }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version-file: .python-version
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: poetry
 
       - name: Instalar dependências
@@ -69,7 +71,7 @@ jobs:
 
       - name: Publicar relatório de cobertura
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage
           path: coverage.xml
@@ -79,14 +81,14 @@ jobs:
     name: Build da documentação
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Instalar Poetry
         run: pipx install poetry==${{ env.POETRY_VERSION }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version-file: .python-version
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: poetry
 
       - name: Instalar dependências
@@ -101,14 +103,14 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Instalar Poetry
         run: pipx install poetry==${{ env.POETRY_VERSION }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version-file: .python-version
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: poetry
 
       - name: Instalar dependências
